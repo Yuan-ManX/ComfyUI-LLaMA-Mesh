@@ -1,5 +1,6 @@
 # ComfyUI-LLaMA-Mesh
 
+make [LLaMA-Mesh](https://github.com/nv-tlabs/LLaMA-Mesh) avialbe in ComfyUI
 
 ## Installation
 
