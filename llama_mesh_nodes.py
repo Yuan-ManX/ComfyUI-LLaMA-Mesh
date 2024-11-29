@@ -11,15 +11,6 @@ from threading import Thread
 # Set an environment variable
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
 
-# Load the tokenizer and model
-model_path = "Zhengyi/LLaMA-Mesh"
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-model = AutoModelForCausalLM.from_pretrained(model_path, device_map="auto")
-terminators = [
-    tokenizer.eos_token_id,
-    tokenizer.convert_tokens_to_ids("<|eot_id|>")
-]
-
 from trimesh.exchange.gltf import export_glb
 import gradio as gr
 import trimesh
@@ -102,49 +93,87 @@ class VisualizeMesh:
         return temp_file
 
 
-# @spaces.GPU(duration=120)
-def chat_llama3_8b(message: str, 
-              history: list, 
-              temperature: float, 
-              max_new_tokens: int
-             ) -> str:
-    """
-    Generate a streaming response using the llama3-8b model.
-    Args:
-        message (str): The input message.
-        history (list): The conversation history used by ChatInterface.
-        temperature (float): The temperature for generating the response.
-        max_new_tokens (int): The maximum number of new tokens to generate.
-    Returns:
-        str: The generated response.
-    """
-    conversation = []
-    for user, assistant in history:
-        conversation.extend([{"role": "user", "content": user}, {"role": "assistant", "content": assistant}])
-    conversation.append({"role": "user", "content": message})
-
-    input_ids = tokenizer.apply_chat_template(conversation, return_tensors="pt").to(model.device)
+class ChatLLaMaMesh:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "message": ("STRING", {"multiline": True}),
+                "temperature": ("FLOAT", {
+                    "default": 0.95, 
+                    "min": 0.0, 
+                    "max": 1.0, 
+                    "step": 0.1
+                }),
+                "max_new_tokens": ("INT", {
+                    "default": 4096,
+                    "min": 128,
+                    "max": 8192,
+                    "step": 1
+                }),
+            },
+            "optional": {
+                "history": ("CHAT_HISTORY", {"default": None}),
+            }
+        }
     
-    streamer = TextIteratorStreamer(tokenizer, timeout=10.0, skip_prompt=True, skip_special_tokens=True)
+    RETURN_TYPES = ("STRING", "CHAT_HISTORY", "STRING",)  
+    RETURN_NAMES = ("response", "history", "mesh_text")   
+    FUNCTION = "chat_llama3_8b"
+    CATEGORY = "LLaMA-Mesh"
 
-    generate_kwargs = dict(
-        input_ids= input_ids,
-        streamer=streamer,
-        max_new_tokens=max_new_tokens,
-        do_sample=True,
-        temperature=temperature,
-        eos_token_id=terminators,
-    )
-    # This will enforce greedy generation (do_sample=False) when the temperature is passed 0, avoiding the crash.             
-    if temperature == 0:
-        generate_kwargs['do_sample'] = False
+    def __init__(self):
+        # Load the tokenizer and model
+        model_path = "Zhengyi/LLaMA-Mesh"
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model = AutoModelForCausalLM.from_pretrained(model_path, device_map="auto")
+        terminators = [
+            tokenizer.eos_token_id,
+            tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        ]
         
-    t = Thread(target=model.generate, kwargs=generate_kwargs)
-    t.start()
-
-    outputs = []
-    for text in streamer:
-        outputs.append(text)
-        #print(outputs)
-        yield "".join(outputs)
+    def chat_llama3_8b(self, message: str, 
+                  history: list, 
+                  temperature: float, 
+                  max_new_tokens: int
+                 ):
+        """
+        Generate a streaming response using the llama3-8b model.
+        Args:
+            message (str): The input message.
+            history (list): The conversation history used by ChatInterface.
+            temperature (float): The temperature for generating the response.
+            max_new_tokens (int): The maximum number of new tokens to generate.
+        Returns:
+            str: The generated response.
+        """
+        conversation = []
+        for user, assistant in history:
+            conversation.extend([{"role": "user", "content": user}, {"role": "assistant", "content": assistant}])
+        conversation.append({"role": "user", "content": message})
+    
+        input_ids = self.tokenizer.apply_chat_template(conversation, return_tensors="pt").to(self.model.device)
+        
+        streamer = TextIteratorStreamer(self.tokenizer, timeout=10.0, skip_prompt=True, skip_special_tokens=True)
+    
+        generate_kwargs = dict(
+            input_ids= input_ids,
+            streamer=streamer,
+            max_new_tokens=max_new_tokens,
+            do_sample=True,
+            temperature=temperature,
+            eos_token_id=self.terminators,
+        )
+        # This will enforce greedy generation (do_sample=False) when the temperature is passed 0, avoiding the crash.             
+        if temperature == 0:
+            generate_kwargs['do_sample'] = False
+            
+        t = Thread(target=self.model.generate, kwargs=generate_kwargs)
+        t.start()
+    
+        outputs = []
+        for text in streamer:
+            outputs.append(text)
+            #print(outputs)
+            yield "".join(outputs)
         
