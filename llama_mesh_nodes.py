@@ -77,15 +77,30 @@ class ApplyGradientColor:
         
         return glb_path
 
-def visualize_mesh(mesh_text):
-    """
-    Convert the provided 3D mesh text into a visualizable format.
-    This function assumes the input is in OBJ format.
-    """
-    temp_file = "temp_mesh.obj"
-    with open(temp_file, "w") as f:
-        f.write(mesh_text)
-    return temp_file
+
+class VisualizeMesh:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mesh_text": ("STRING", {"multiline": True}),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING",) 
+    FUNCTION = "visualize_mesh"
+    CATEGORY = "LLaMA-Mesh"
+
+    def visualize_mesh(self, mesh_text):
+        """
+        Convert the provided 3D mesh text into a visualizable format.
+        This function assumes the input is in OBJ format.
+        """
+        temp_file = "temp_mesh.obj"
+        with open(temp_file, "w") as f:
+            f.write(mesh_text)
+        return temp_file
+
 
 # @spaces.GPU(duration=120)
 def chat_llama3_8b(message: str, 
