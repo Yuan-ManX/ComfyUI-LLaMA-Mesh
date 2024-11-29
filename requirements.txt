@@ -1,0 +1,4 @@
+accelerate
+numpy
+transformers
+trimesh
