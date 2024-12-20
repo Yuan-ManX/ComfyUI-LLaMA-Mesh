@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-llama-mesh"
+description = "ComfyUI nodes for LLaMA-Mesh model."
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["accelerate", "numpy", "transformers", "trimesh"]
+
+[project.urls]
+Repository = "https://github.com/Yuan-ManX/ComfyUI-LLaMA-Mesh"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-LLaMA-Mesh"
+Icon = ""
